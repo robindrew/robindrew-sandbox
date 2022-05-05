@@ -1,0 +1,48 @@
+
+
+// PLUGINS
+apply plugin: 'java-library'
+apply plugin: 'eclipse'
+
+// ARTIFACT
+version = '1.2.0'
+
+
+// JAVA VERSION
+sourceCompatibility = 1.8
+targetCompatibility = 1.8
+
+
+// COMPILATION
+tasks.withType(JavaCompile) {
+    options.encoding = 'UTF-8'
+}
+
+
+// SOURCE FILES (What are our source directories)
+sourceSets {
+	main {
+    	java {
+        	srcDir 'src/main/java'
+		}
+	}
+	generated {
+    	java {
+        	srcDir 'src/generated/java'
+		}
+	}
+}
+
+
+// REPOSITORIES (Where to download JAR files from)
+repositories {
+	mavenLocal()
+   	mavenCentral()
+}
+
+// DEPENDENCIES (Which JAR files to download and host locally)
+dependencies {
+
+	implementation project(":robindrew-common")
+
+}
