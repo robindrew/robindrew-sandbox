@@ -8,6 +8,7 @@ import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.slf4j.Logger;
@@ -20,20 +21,23 @@ public class LightHttpServer {
 	public static void main(String[] args) throws Throwable {
 		String host = "localhost";
 		int port = 1111;
+		int bufferSize = 2000000;
 
-		new LightHttpServer(host, port).run();
+		new LightHttpServer(host, port, bufferSize).run();
 	}
 
+	private final AtomicLong connectionCount = new AtomicLong(0);
 	private final Selector selector;
 	private final ServerSocketChannel server;
 	private final AtomicReference<Throwable> crashed = new AtomicReference<>();
-	private final HttpDataCache dataCache = new HttpDataCache();
+	private final HttpConnectionCache connectionCache;
 
-	public LightHttpServer(String host, int port) throws IOException {
-		this(new InetSocketAddress(host, port));
+	public LightHttpServer(String host, int port, int bufferSize) throws IOException {
+		this(new InetSocketAddress(host, port), bufferSize);
 	}
 
-	public LightHttpServer(InetSocketAddress bindAddress) throws IOException {
+	public LightHttpServer(InetSocketAddress bindAddress, int bufferSize) throws IOException {
+		this.connectionCache = new HttpConnectionCache(bufferSize);
 
 		// Create selectors
 		selector = Selector.open();
@@ -70,7 +74,8 @@ public class LightHttpServer {
 			int reads = 0;
 			while (isRunning()) {
 
-				// Selects a set of keys whose corresponding channels are ready for I/O operations
+				// Selects a set of keys whose corresponding channels are ready for I/O
+				// operations
 				if (selector.select() == 0) {
 					Thread.yield();
 					continue;
@@ -82,23 +87,22 @@ public class LightHttpServer {
 					// New Connection
 					if (key.isAcceptable()) {
 						SocketChannel client = socket.accept();
-
-						// Adjusts this channel's blocking mode to false
+						long id = connectionCount.incrementAndGet();
 						client.configureBlocking(false);
 
 						// Operation-set bit for read operations
 						SelectionKey clientKey = client.register(selector, SelectionKey.OP_READ);
-						HttpData data = dataCache.take();
-						data.open(client);
-						clientKey.attach(data);
+						HttpConnection connection = connectionCache.take();
+						connection.open(client, id);
+						clientKey.attach(connection);
 						accepts++;
 					}
 
 					// Read Data
 					if (key.isReadable()) {
-						HttpData data = (HttpData) key.attachment();
-						if (!data.read()) {
-							dataCache.release(data);
+						HttpConnection connection = (HttpConnection) key.attachment();
+						if (!connection.read()) {
+							connectionCache.release(connection);
 						}
 						reads++;
 					}
