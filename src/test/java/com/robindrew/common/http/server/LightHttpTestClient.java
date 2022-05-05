@@ -1,13 +1,15 @@
 package com.robindrew.common.http.server;
 
+import java.io.BufferedInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.StringWriter;
 import java.net.BindException;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.util.Random;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.atomic.AtomicLong;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -21,7 +23,7 @@ public class LightHttpTestClient extends Thread {
 	public static void main(String[] args) throws Throwable {
 		String host = "localhost";
 		int port = 1111;
-		int clients = 100;
+		int clients = 10;
 		Random random = new Random(clients);
 
 		CountDownLatch latch = new CountDownLatch(clients);
@@ -44,7 +46,7 @@ public class LightHttpTestClient extends Thread {
 		this.address = new InetSocketAddress(host, port);
 		this.message = new byte[100000];
 		random.nextBytes(message);
-		
+
 	}
 
 	public void run() {
@@ -67,20 +69,32 @@ public class LightHttpTestClient extends Thread {
 				output.write(message);
 				output.flush();
 
+				
+				StringWriter writer = new StringWriter();
+				InputStream input = new BufferedInputStream(socket.getInputStream());
+				while (true) {
+					int read = input.read();
+					if (read == -1) {
+						break;
+					}
+					writer.write(read);
+				}
+
+				log.info("Response: " + writer.toString());
+
 			} catch (BindException be) {
 				Threads.sleep(5000);
 			} catch (Throwable t) {
 				t.printStackTrace();
 				Threads.sleep(1000);
 			}
-			Threads.sleep(50);
+			Threads.sleep(500);
 		}
 	}
 
 	private byte[] createMessage() {
-//		String request = "GET " + number.incrementAndGet() + " HTTP/1.1";
-//		return request.getBytes();
-		return message;
+		String request = "GET / HTTP/1.1\r\nConnection: close\r\n\r\n";
+		return request.getBytes();
 	}
 
 }

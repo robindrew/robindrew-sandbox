@@ -1,29 +1,37 @@
 package com.robindrew.common.http.server;
 
 import java.io.IOException;
-import java.net.InetSocketAddress;
 import java.net.StandardSocketOptions;
+import java.nio.channels.CancelledKeyException;
+import java.nio.channels.ClosedChannelException;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.util.Set;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.robindrew.common.util.Threads;
+
 public class LightHttpServer {
 
 	private static final Logger log = LoggerFactory.getLogger(LightHttpServer.class);
 
 	public static void main(String[] args) throws Throwable {
+
 		String host = "localhost";
 		int port = 1111;
 		int bufferSize = 2000000;
 
-		new LightHttpServer(host, port, bufferSize).run();
+		LightHttpServerConfig config = new LightHttpServerConfig(host, port);
+		config.setConnectionBuffer(bufferSize);
+
+		new LightHttpServer(config).run();
 	}
 
 	private final AtomicLong connectionCount = new AtomicLong(0);
@@ -31,26 +39,25 @@ public class LightHttpServer {
 	private final ServerSocketChannel server;
 	private final AtomicReference<Throwable> crashed = new AtomicReference<>();
 	private final HttpConnectionCache connectionCache;
+	private final ExecutorService handlerPool;
 
-	public LightHttpServer(String host, int port, int bufferSize) throws IOException {
-		this(new InetSocketAddress(host, port), bufferSize);
-	}
-
-	public LightHttpServer(InetSocketAddress bindAddress, int bufferSize) throws IOException {
-		this.connectionCache = new HttpConnectionCache(bufferSize);
+	public LightHttpServer(LightHttpServerConfig config) throws IOException {
+		this.connectionCache = new HttpConnectionCache(config.getConnectionBuffer());
+		this.handlerPool = Threads.newFixedThreadPool("HttpHandlerThread-%d", config.getHandlerThreads());
 
 		// Create selectors
 		selector = Selector.open();
 		server = ServerSocketChannel.open();
-		server.bind(bindAddress);
-		server.setOption(StandardSocketOptions.SO_RCVBUF, 5000000);
-		server.setOption(StandardSocketOptions.SO_REUSEADDR, true);
-		log.info("SO_RCVBUF={}", server.getOption(StandardSocketOptions.SO_RCVBUF));
-		log.info("SO_REUSEADDR={}", server.getOption(StandardSocketOptions.SO_REUSEADDR));
-		server.configureBlocking(false);
+		server.bind(config.getBindAddress());
+		server.setOption(StandardSocketOptions.SO_RCVBUF, config.getReceiveBuffer());
+		server.setOption(StandardSocketOptions.SO_REUSEADDR, config.isReuseAddress());
+		server.configureBlocking(config.isBlocking());
 		server.register(selector, SelectionKey.OP_ACCEPT, null);
 
-		log.info("Non-Blocking Server Listening on {}", bindAddress);
+		log.info("[Server] Receive Buffer: {}", server.getOption(StandardSocketOptions.SO_RCVBUF));
+		log.info("[Server] Reuse Address: {}", server.getOption(StandardSocketOptions.SO_REUSEADDR));
+		log.info("[Server] Blocking: {}", server.isBlocking());
+		log.info("[Server] Listening on {}", server.getLocalAddress());
 	}
 
 	public boolean isRunning() {
@@ -83,34 +90,48 @@ public class LightHttpServer {
 
 				Set<SelectionKey> keySet = selector.selectedKeys();
 				for (SelectionKey key : keySet) {
+					try {
 
-					// New Connection
-					if (key.isAcceptable()) {
-						SocketChannel client = socket.accept();
-						long id = connectionCount.incrementAndGet();
-						client.configureBlocking(false);
-
-						// Operation-set bit for read operations
-						SelectionKey clientKey = client.register(selector, SelectionKey.OP_READ);
-						HttpConnection connection = connectionCache.take();
-						connection.open(client, id);
-						clientKey.attach(connection);
-						accepts++;
-					}
-
-					// Read Data
-					if (key.isReadable()) {
+						// Key has a connection assigned?
 						HttpConnection connection = (HttpConnection) key.attachment();
-						if (!connection.read()) {
-							connectionCache.release(connection);
+
+						// New Connection
+						if (connection == null) {
+							if (key.isValid() && key.isAcceptable()) {
+								acceptKey(selector, socket);
+								accepts++;
+							}
+
 						}
-						reads++;
+						
+						// Existing Connection
+						else {
+							if (connection.isClosed() || connection.isHandling()) {
+								continue;
+							}
+
+							// Read Data
+							if (key.isValid() && key.isReadable()) {
+								connection.readRequest();
+
+								// Finished reading HTTP request?
+								if (connection.hasRequest()) {
+									
+									// Hand over connection to be handled separately
+									handlerPool.submit(connection);
+								}
+								reads++;
+							}
+						}
+
+					} catch (CancelledKeyException cke) {
+						log.warn("Key Cancelled");
 					}
 
 					// Logging
 					checkpoint2 = System.currentTimeMillis();
 					if (checkpoint2 - checkpoint1 > 1000) {
-						log.info("[Status] accepts={}, reads={}", accepts, reads);
+						log.info("[Status] accepts={}, reads={} (in {}s)", accepts, reads, ((checkpoint2 - checkpoint1) / 1000));
 						accepts = 0;
 						reads = 0;
 						checkpoint1 = checkpoint2;
@@ -123,5 +144,17 @@ public class LightHttpServer {
 			crashed.compareAndSet(null, t);
 			log.error("Server crashed!", t);
 		}
+	}
+
+	private void acceptKey(Selector selector, ServerSocketChannel socket) throws IOException, ClosedChannelException {
+		SocketChannel client = socket.accept();
+		long id = connectionCount.incrementAndGet();
+		client.configureBlocking(false);
+
+		// Operation-set bit for read operations
+		SelectionKey clientKey = client.register(selector, SelectionKey.OP_READ);
+		HttpConnection connection = connectionCache.take();
+		connection.open(client, id);
+		clientKey.attach(connection);
 	}
 }

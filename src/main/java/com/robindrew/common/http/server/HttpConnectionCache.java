@@ -28,14 +28,14 @@ public class HttpConnectionCache {
 			}
 		}
 		if (data == null) {
-			data = new HttpConnection(bufferSize);
+			data = new HttpConnection(bufferSize, this);
 			log.info("New Data");
 		}
-		data.reset();
 		return data;
 	}
 
 	public void release(HttpConnection data) {
+		data.reset();
 		synchronized (dataList) {
 			dataList.add(data);
 		}
