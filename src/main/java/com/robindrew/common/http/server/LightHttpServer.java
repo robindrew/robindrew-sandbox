@@ -103,7 +103,7 @@ public class LightHttpServer {
 							}
 
 						}
-						
+
 						// Existing Connection
 						else {
 							if (connection.isClosed() || connection.isHandling()) {
@@ -116,7 +116,7 @@ public class LightHttpServer {
 
 								// Finished reading HTTP request?
 								if (connection.hasRequest()) {
-									
+
 									// Hand over connection to be handled separately
 									handlerPool.submit(connection);
 								}
