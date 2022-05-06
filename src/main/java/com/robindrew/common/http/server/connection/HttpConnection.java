@@ -1,4 +1,4 @@
-package com.robindrew.common.http.server;
+package com.robindrew.common.http.server.connection;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -6,6 +6,9 @@ import java.nio.channels.SocketChannel;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.robindrew.common.http.server.connection.buffer.HttpRequestBuffer;
+import com.robindrew.common.http.server.connection.buffer.HttpResponseBuffer;
 
 public class HttpConnection implements Runnable {
 
@@ -17,17 +20,23 @@ public class HttpConnection implements Runnable {
 	private volatile long timeHandling = 0;
 	private volatile SocketChannel channel = null;
 
+	private final int connectionId;
 	private final HttpRequestBuffer requestBuffer;
 	private final HttpResponseBuffer responseBuffer;
 	private final HttpConnectionCache cache;
 
-	public HttpConnection(int bufferSize, HttpConnectionCache cache) {
+	public HttpConnection(int id, int bufferSize, HttpConnectionCache cache) {
 		if (bufferSize < 1000) {
 			throw new IllegalArgumentException("bufferSize=" + bufferSize);
 		}
+		this.connectionId = id;
 		this.requestBuffer = new HttpRequestBuffer(bufferSize);
 		this.responseBuffer = new HttpResponseBuffer(bufferSize);
 		this.cache = cache;
+	}
+
+	public int getConnectionId() {
+		return connectionId;
 	}
 
 	public long getId() {

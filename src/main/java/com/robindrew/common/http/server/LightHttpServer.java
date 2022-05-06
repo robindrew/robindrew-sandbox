@@ -16,6 +16,8 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.robindrew.common.http.server.connection.HttpConnection;
+import com.robindrew.common.http.server.connection.HttpConnectionCache;
 import com.robindrew.common.util.Threads;
 
 public class LightHttpServer {
@@ -75,10 +77,7 @@ public class LightHttpServer {
 
 			// Infinite loop..
 			// Keep server running
-			long checkpoint1 = System.currentTimeMillis();
-			long checkpoint2;
-			int accepts = 0;
-			int reads = 0;
+			EventMonitor monitor = new EventMonitor();
 			while (isRunning()) {
 
 				// Selects a set of keys whose corresponding channels are ready for I/O
@@ -99,7 +98,7 @@ public class LightHttpServer {
 						if (connection == null) {
 							if (key.isValid() && key.isAcceptable()) {
 								acceptKey(selector, socket);
-								accepts++;
+								monitor.accept();
 							}
 
 						}
@@ -119,22 +118,14 @@ public class LightHttpServer {
 
 									// Hand over connection to be handled separately
 									handlerPool.submit(connection);
+									monitor.handle();
 								}
-								reads++;
+								monitor.read();
 							}
 						}
 
 					} catch (CancelledKeyException cke) {
 						log.warn("Key Cancelled");
-					}
-
-					// Logging
-					checkpoint2 = System.currentTimeMillis();
-					if (checkpoint2 - checkpoint1 > 1000) {
-						log.info("[Status] accepts={}, reads={} (in {}s)", accepts, reads, ((checkpoint2 - checkpoint1) / 1000));
-						accepts = 0;
-						reads = 0;
-						checkpoint1 = checkpoint2;
 					}
 
 				}

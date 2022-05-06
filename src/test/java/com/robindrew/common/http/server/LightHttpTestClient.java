@@ -23,7 +23,7 @@ public class LightHttpTestClient extends Thread {
 	public static void main(String[] args) throws Throwable {
 		String host = "localhost";
 		int port = 1111;
-		int clients = 10;
+		int clients = 100;
 		Random random = new Random(clients);
 
 		CountDownLatch latch = new CountDownLatch(clients);
@@ -80,15 +80,12 @@ public class LightHttpTestClient extends Thread {
 					writer.write(read);
 				}
 
-				log.info("Response: " + writer.toString());
+				//log.info("Response: " + writer.toString());
 
-			} catch (BindException be) {
-				Threads.sleep(5000);
 			} catch (Throwable t) {
 				t.printStackTrace();
-				Threads.sleep(1000);
 			}
-			Threads.sleep(500);
+			Threads.sleep(5000);
 		}
 	}
 

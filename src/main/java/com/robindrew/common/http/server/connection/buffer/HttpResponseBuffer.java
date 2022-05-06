@@ -1,4 +1,4 @@
-package com.robindrew.common.http.server;
+package com.robindrew.common.http.server.connection.buffer;
 
 import java.nio.ByteBuffer;
 
