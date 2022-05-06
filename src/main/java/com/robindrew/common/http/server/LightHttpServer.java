@@ -27,7 +27,7 @@ public class LightHttpServer {
 
 		String host = "localhost";
 		int port = 1111;
-		int bufferSize = 2000000;
+		int bufferSize = 10000;
 
 		LightHttpServerConfig config = new LightHttpServerConfig(host, port);
 		config.setConnectionBuffer(bufferSize);

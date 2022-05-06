@@ -5,7 +5,7 @@ import java.net.InetSocketAddress;
 public class LightHttpServerConfig {
 
 	private final InetSocketAddress bindAddress;
-	private int connectionBuffer = 2000000;
+	private int connectionBuffer = 1000000;
 	private int receiveBuffer = 5000000;
 	private int handlerThreads = 20;
 	private int eventThreads = 20;
