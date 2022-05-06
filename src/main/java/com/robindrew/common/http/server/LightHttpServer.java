@@ -3,7 +3,6 @@ package com.robindrew.common.http.server;
 import java.io.IOException;
 import java.net.StandardSocketOptions;
 import java.nio.channels.CancelledKeyException;
-import java.nio.channels.ClosedChannelException;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
@@ -40,8 +39,10 @@ public class LightHttpServer {
 	private final Selector selector;
 	private final ServerSocketChannel server;
 	private final AtomicReference<Throwable> crashed = new AtomicReference<>();
+	private final HttpEventMonitor monitor = new HttpEventMonitor();
 	private final HttpConnectionCache connectionCache;
 	private final ExecutorService handlerPool;
+	private final HttpReaderService readerService;
 
 	public LightHttpServer(LightHttpServerConfig config) throws IOException {
 		this.connectionCache = new HttpConnectionCache(config.getConnectionBuffer());
@@ -60,6 +61,8 @@ public class LightHttpServer {
 		log.info("[Server] Reuse Address: {}", server.getOption(StandardSocketOptions.SO_REUSEADDR));
 		log.info("[Server] Blocking: {}", server.isBlocking());
 		log.info("[Server] Listening on {}", server.getLocalAddress());
+
+		readerService = new HttpReaderService(config.getEventThreads(), handlerPool, monitor);
 	}
 
 	public boolean isRunning() {
@@ -73,17 +76,15 @@ public class LightHttpServer {
 	public void run() {
 		try {
 			Selector selector = this.selector;
-			ServerSocketChannel socket = this.server;
 
 			// Infinite loop..
 			// Keep server running
-			EventMonitor monitor = new EventMonitor();
 			while (isRunning()) {
 
 				// Selects a set of keys whose corresponding channels are ready for I/O
 				// operations
 				if (selector.select() == 0) {
-					Thread.yield();
+					Threads.sleep(20);
 					continue;
 				}
 
@@ -91,41 +92,18 @@ public class LightHttpServer {
 				for (SelectionKey key : keySet) {
 					try {
 
-						// Key has a connection assigned?
-						HttpConnection connection = (HttpConnection) key.attachment();
-
 						// New Connection
-						if (connection == null) {
-							if (key.isValid() && key.isAcceptable()) {
-								acceptKey(selector, socket);
-								monitor.accept();
+						if (key.attachment() == null) {
+							if (key.isAcceptable()) {
+								acceptKey(selector, server);
 							}
 
+							// Read Request
+						} else {
+							readerService.readRequestAsync(key);
 						}
-
-						// Existing Connection
-						else {
-							if (connection.isClosed() || connection.isHandling()) {
-								continue;
-							}
-
-							// Read Data
-							if (key.isValid() && key.isReadable()) {
-								connection.readRequest();
-
-								// Finished reading HTTP request?
-								if (connection.hasRequest()) {
-
-									// Hand over connection to be handled separately
-									handlerPool.submit(connection);
-									monitor.handle();
-								}
-								monitor.read();
-							}
-						}
-
 					} catch (CancelledKeyException cke) {
-						log.warn("Key Cancelled");
+						log.warn("Key Cancelled", cke);
 					}
 
 				}
@@ -137,15 +115,17 @@ public class LightHttpServer {
 		}
 	}
 
-	private void acceptKey(Selector selector, ServerSocketChannel socket) throws IOException, ClosedChannelException {
+	private void acceptKey(Selector selector, ServerSocketChannel socket) throws IOException {
 		SocketChannel client = socket.accept();
 		long id = connectionCount.incrementAndGet();
 		client.configureBlocking(false);
 
-		// Operation-set bit for read operations
+		// Register the connection
 		SelectionKey clientKey = client.register(selector, SelectionKey.OP_READ);
 		HttpConnection connection = connectionCache.take();
 		connection.open(client, id);
 		clientKey.attach(connection);
+		monitor.accept();
 	}
+
 }

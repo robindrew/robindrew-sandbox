@@ -8,6 +8,7 @@ public class LightHttpServerConfig {
 	private int connectionBuffer = 2000000;
 	private int receiveBuffer = 5000000;
 	private int handlerThreads = 20;
+	private int eventThreads = 20;
 	private boolean reuseAddress = true;
 	private boolean blocking = false;
 
@@ -24,6 +25,14 @@ public class LightHttpServerConfig {
 
 	public InetSocketAddress getBindAddress() {
 		return bindAddress;
+	}
+
+	public int getEventThreads() {
+		return eventThreads;
+	}
+
+	public void setEventThreads(int eventThreads) {
+		this.eventThreads = eventThreads;
 	}
 
 	public int getHandlerThreads() {

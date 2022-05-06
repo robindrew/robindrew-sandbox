@@ -8,9 +8,9 @@ import org.slf4j.LoggerFactory;
 import com.robindrew.common.text.Strings;
 import com.robindrew.common.util.Threads;
 
-class EventMonitor extends Thread {
+class HttpEventMonitor extends Thread {
 
-	private static final Logger log = LoggerFactory.getLogger(EventMonitor.class);
+	private static final Logger log = LoggerFactory.getLogger(HttpEventMonitor.class);
 
 	private long checkpoint1;
 	private long checkpoint2;
@@ -18,7 +18,7 @@ class EventMonitor extends Thread {
 	private final AtomicInteger readCount = new AtomicInteger();
 	private final AtomicInteger handleCount = new AtomicInteger();
 
-	public EventMonitor() {
+	public HttpEventMonitor() {
 		start();
 	}
 

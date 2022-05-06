@@ -5,7 +5,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.StringWriter;
-import java.net.BindException;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.util.Random;
@@ -23,7 +22,7 @@ public class LightHttpTestClient extends Thread {
 	public static void main(String[] args) throws Throwable {
 		String host = "localhost";
 		int port = 1111;
-		int clients = 100;
+		int clients = 500;
 		Random random = new Random(clients);
 
 		CountDownLatch latch = new CountDownLatch(clients);
