@@ -136,7 +136,8 @@ public class HttpConnection implements Runnable {
 	@Override
 	public void run() {
 		try {
-			responseBuffer.write("HTTP/1.1 OK 200\r\n\r\n<title>Test Response</title><body>Test Body</body>");
+			responseBuffer.writeOk("<title>Test Response</title><body>Test Body</body>");
+			System.out.println(responseBuffer);
 			ByteBuffer buffer = responseBuffer.get();
 			buffer.flip();
 			channel.write(buffer);

@@ -1,6 +1,9 @@
 package com.robindrew.common.http.server.connection.buffer;
 
 import java.nio.ByteBuffer;
+import java.nio.charset.Charset;
+
+import com.google.common.base.Charsets;
 
 public class HttpRequestBuffer {
 
@@ -8,6 +11,7 @@ public class HttpRequestBuffer {
 
 	private final byte[] bytes;
 	private final ByteBuffer buffer;
+	private volatile Charset charset = Charsets.UTF_8;
 
 	public HttpRequestBuffer(int length) {
 		bytes = new byte[length];
@@ -23,7 +27,7 @@ public class HttpRequestBuffer {
 	}
 
 	public String toString() {
-		return new String(bytes, 0, buffer.position());
+		return new String(bytes, 0, buffer.position(), charset);
 	}
 
 	public boolean isReadyToHandle() {
