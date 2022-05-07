@@ -130,10 +130,12 @@ public class HttpConnection implements Runnable {
 	@Override
 	public void run() {
 		try {
-			log.info("[Request] #{}\n{}", id, requestBuffer.getHead());
+			String request = requestBuffer.getRequest();
+			log.info("[Request] #{} ({} bytes)\n{}", id, request.length(), request);
 
-			responseBuffer.writeOk("<title>Test Response</title><body>Test Body</body>");
-			log.info("[Response] #{}\n{}", id, responseBuffer);
+			responseBuffer.writeOk("<title>Test Response</title><body><pre>" + request + "</pre></body>");
+			String response = responseBuffer.toString();
+			log.info("[Response] #{} ({} bytes)\n{}", id, response.length(), response);
 			ByteBuffer buffer = responseBuffer.get();
 			buffer.flip();
 			channel.write(buffer);

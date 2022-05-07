@@ -37,7 +37,7 @@ public class HttpRequestBuffer {
 		return index != -1;
 	}
 
-	public String getHead() {
+	public String getRequest() {
 		int index = HttpUtils.indexOf(END_HEADERS, this.bytes, buffer.position());
 		if (index == -1) {
 			throw new IllegalStateException("Head not available");
