@@ -8,8 +8,9 @@ import com.google.common.base.Charsets;
 public class HttpResponseBuffer {
 
 	private static final byte[] RESPONSE_OK = "HTTP/1.1 200 OK\r\n".getBytes();
-	private static final byte[] CONTENT_LENGTH = "Content-Length: ".getBytes();
+	private static final byte[] SERVER_LIGHT_HTTP_SERVER = "Server: LightHttpServer\r\n".getBytes();
 	private static final byte[] CONNECTION_CLOSE = "Connection: close\r\n".getBytes();
+	private static final byte[] CONTENT_LENGTH = "Content-Length: ".getBytes();
 	private static final byte[] NEW_LINE = "\r\n".getBytes();
 
 	private final byte[] bytes;
@@ -44,6 +45,7 @@ public class HttpResponseBuffer {
 			throw new IllegalArgumentException("content is empty");
 		}
 		write(RESPONSE_OK);
+		write(SERVER_LIGHT_HTTP_SERVER);
 		write(CONNECTION_CLOSE);
 		writeContentLength(content.length);
 		write(NEW_LINE);

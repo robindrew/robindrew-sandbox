@@ -106,7 +106,6 @@ public class HttpConnection implements Runnable {
 			int read;
 			while (true) {
 				read = channel.read(requestBuffer.get());
-				// log.info("READ({} bytes)", read);
 
 				// Closed?
 				if (read == -1) {
@@ -119,7 +118,6 @@ public class HttpConnection implements Runnable {
 				}
 
 				totalRead += read;
-				// log.info("BUFFER:\r\n{}", requestBuffer);
 			}
 
 		} catch (Exception e) {
@@ -129,15 +127,13 @@ public class HttpConnection implements Runnable {
 		return totalRead;
 	}
 
-	public void writeResponse(String text) {
-		
-	}
-	
 	@Override
 	public void run() {
 		try {
+			log.info("[Request] #{}\n{}", id, requestBuffer.getHead());
+
 			responseBuffer.writeOk("<title>Test Response</title><body>Test Body</body>");
-			System.out.println(responseBuffer);
+			log.info("[Response] #{}\n{}", id, responseBuffer);
 			ByteBuffer buffer = responseBuffer.get();
 			buffer.flip();
 			channel.write(buffer);

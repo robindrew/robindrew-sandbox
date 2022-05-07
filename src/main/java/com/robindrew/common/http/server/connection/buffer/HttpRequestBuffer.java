@@ -4,6 +4,7 @@ import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 
 import com.google.common.base.Charsets;
+import com.robindrew.common.http.server.HttpUtils;
 
 public class HttpRequestBuffer {
 
@@ -32,21 +33,16 @@ public class HttpRequestBuffer {
 
 	public boolean isReadyToHandle() {
 		// The HTTP request is ready once the \r\n sequence has been provided
-		int index = indexOf(END_HEADERS, this.bytes, buffer.position());
+		int index = HttpUtils.indexOf(END_HEADERS, this.bytes, buffer.position());
 		return index != -1;
 	}
 
-	private int indexOf(byte[] needle, byte[] haystack, int length) {
-		int needleIndex = 0;
-		for (int i = 0; i < length; i++) {
-			if (haystack[i] == needle[needleIndex]) {
-				needleIndex++;
-				if (needleIndex == needle.length) {
-					return (i - needle.length) + 1;
-				}
-			}
+	public String getHead() {
+		int index = HttpUtils.indexOf(END_HEADERS, this.bytes, buffer.position());
+		if (index == -1) {
+			throw new IllegalStateException("Head not available");
 		}
-		return -1;
+		return new String(bytes, 0, index, charset);
 	}
 
 }
