@@ -129,10 +129,14 @@ public class HttpConnection implements Runnable {
 		return totalRead;
 	}
 
+	public void writeResponse(String text) {
+		
+	}
+	
 	@Override
 	public void run() {
 		try {
-			responseBuffer.set("HTTP/1.1 OK 200");
+			responseBuffer.write("HTTP/1.1 OK 200\r\n\r\n<title>Test Response</title><body>Test Body</body>");
 			ByteBuffer buffer = responseBuffer.get();
 			buffer.flip();
 			channel.write(buffer);
@@ -144,14 +148,14 @@ public class HttpConnection implements Runnable {
 		}
 	}
 
-	public boolean hasRequest() {
+	public boolean isReadyToHandle() {
 		if (isClosed()) {
 			return false;
 		}
 		if (isHandling()) {
 			return false;
 		}
-		if (!requestBuffer.isValid()) {
+		if (!requestBuffer.isReadyToHandle()) {
 			return false;
 		}
 		timeHandling = System.currentTimeMillis();

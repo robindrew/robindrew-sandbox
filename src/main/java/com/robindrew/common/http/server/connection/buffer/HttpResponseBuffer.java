@@ -26,8 +26,15 @@ public class HttpResponseBuffer {
 		return new String(bytes, 0, buffer.position());
 	}
 
-	public void set(String text) {
-		byte[] data = text.getBytes(Charsets.UTF_8);
+	public void ok(byte[] data) {
+		
+	}
+
+	public void write(String text) {
+		write(text.getBytes(Charsets.UTF_8));
+	}
+
+	public void write(byte[] data) {
 		buffer.put(data);
 	}
 

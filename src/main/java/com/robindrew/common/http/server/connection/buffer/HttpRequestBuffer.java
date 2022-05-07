@@ -26,7 +26,8 @@ public class HttpRequestBuffer {
 		return new String(bytes, 0, buffer.position());
 	}
 
-	public boolean isValid() {
+	public boolean isReadyToHandle() {
+		// The HTTP request is ready once the \r\n sequence has been provided
 		int index = indexOf(END_HEADERS, this.bytes, buffer.position());
 		return index != -1;
 	}

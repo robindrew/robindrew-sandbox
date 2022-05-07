@@ -40,11 +40,11 @@ public class HttpReaderService {
 		keyQueue.offer(key);
 	}
 
-	private void readRequest(int readerId, SelectionKey key) throws Exception {
+	private void readRequest(int readerThreadId, SelectionKey connectionKey) throws Exception {
 		try {
 
 			// Key has a connection assigned?
-			HttpConnection connection = (HttpConnection) key.attachment();
+			HttpConnection connection = (HttpConnection) connectionKey.attachment();
 
 			// Existing Connection
 			if (connection == null || connection.isClosed() || connection.isHandling()) {
@@ -52,23 +52,25 @@ public class HttpReaderService {
 			}
 
 			// Read Data
-			if (key.isValid() && key.isReadable()) {
+			if (connectionKey.isValid() && connectionKey.isReadable()) {
+
+				// Attempt to read part (or all) of the request
 				connection.readRequest();
+				monitor.read();
 
 				// Finished reading HTTP request?
-				if (connection.hasRequest()) {
+				if (connection.isReadyToHandle()) {
 
 					// Hand over connection to be handled separately
 					handlerPool.submit(connection);
 					monitor.handle();
 				}
-				monitor.read();
 			}
 
 		} catch (CancelledKeyException cke) {
-			log.warn("Key cancelled: " + key);
+			log.warn("Key cancelled: " + connectionKey);
 		} catch (Exception e) {
-			log.warn("Exception handling key: " + key, e);
+			log.warn("Exception handling key: " + connectionKey, e);
 		}
 	}
 
@@ -108,6 +110,9 @@ public class HttpReaderService {
 
 			// Wait for next available key
 			SelectionKey key = keyQueue.take();
+			if (!key.isValid()) {
+				return;
+			}
 
 			// Check no other handler is already handling it
 			if (!lock(key)) {
