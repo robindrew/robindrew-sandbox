@@ -1,4 +1,4 @@
 rootProject.name = 'robindrew-sandbox'
 
-include 'robindrew-common'
-project(":robindrew-common").projectDir = file('/../robindrew-common')
+include 'robindrew-common-spring'
+project(":robindrew-common-spring").projectDir = file('/../robindrew-common-spring')

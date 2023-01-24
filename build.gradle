@@ -43,6 +43,9 @@ repositories {
 // DEPENDENCIES (Which JAR files to download and host locally)
 dependencies {
 
-	implementation project(":robindrew-common")
+	implementation project(":robindrew-common-spring")
 
+	implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-xml:2.11.1'
+	implementation 'org.springframework.boot:spring-boot-starter-web:2.7.1'
+	testImplementation group: 'junit',            name: 'junit',             version: '4.4'
 }
